@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import "./globals.css";
 import SmoothScroll from "@/components/SmoothScroll";
@@ -10,6 +10,13 @@ import FontStyles from "@/components/FontStyles";
 import Navigation from "@/components/Navigation";
 import InViewObserver from "@/components/InViewObserver";
 import basePath from "@/lib/basePath";
+
+// Safari on iOS tints the browser chrome with this. Navigation swaps it to
+// the dark tile colour while the menu is open, so the green accent panel that
+// collapses toward the top edge never ends up as the sampled colour.
+export const viewport: Viewport = {
+  themeColor: "#ffffff",
+};
 
 export const metadata: Metadata = {
   title: {
@@ -63,7 +70,6 @@ export default function RootLayout({
   return (
     <html lang="nl" suppressHydrationWarning>
       <head>
-        <meta name="theme-color" content="#272727" />
         <link rel="preconnect" href="https://HAL13xMAE.b-cdn.net" />
         {/* Above-the-fold text: the hero loader and every body copy style. */}
         <link rel="preload" href={`${basePath}/fonts/HelveticaNeueLight.woff2`} as="font" type="font/woff2" crossOrigin="anonymous" />
