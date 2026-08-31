@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useLenis } from '@/components/SmoothScroll';
+import { useOverlayThemeColor } from '@/hooks/useOverlayThemeColor';
 import styles from './Navigation.module.css';
 
 type DotLottieElement = HTMLElement & {
@@ -21,14 +22,6 @@ const navItems = [
   { label: 'Contact', target: 'cta-section', accent: true, tagLeft: 'info@moveadaptevolve.nl', tagRight: 'Neem contact op', linkLeft: 'mailto:info@moveadaptevolve.nl', linkRight: 'cta-section' },
 ];
 
-// Browser chrome colour on iOS. The green accent panel collapses toward the
-// top edge on close, which is exactly where Safari samples, so the value is
-// only restored once that animation has finished.
-const THEME_COLOR_DEFAULT = '#ffffff';
-const THEME_COLOR_MENU_OPEN = '#272727';
-// .tile runs 1s, .tileAccent trails it by 0.12s.
-const MENU_CLOSE_MS = 1120;
-
 const sectionColors: { id: string; bg: string }[] = [
   { id: 'mae-section', bg: '#d7d7d7' },
   { id: 'herstel-section', bg: '#3a3a3a' },
@@ -44,6 +37,8 @@ export default function Navigation() {
   const [active, setActive] = useState(false);
   const [introReady, setIntroReady] = useState(false);
   const pathname = usePathname();
+
+  useOverlayThemeColor(active);
   const hamburgerRef = useRef<HTMLButtonElement>(null);
   const lottieRef = useRef<DotLottieElement>(null);
   const tagLeftRef = useRef<HTMLButtonElement>(null);
@@ -55,30 +50,6 @@ export default function Navigation() {
   // Only the hero delays the navigation. Pages without one (privacy,
   // stylesheet) never fire the event, so they must not wait for it.
   const visible = introReady || pathname !== '/';
-
-  // Keep the iOS browser bar in step with the menu
-  const hasOpenedRef = useRef(false);
-  useEffect(() => {
-    const meta = document.querySelector('meta[name="theme-color"]');
-    if (!meta) return;
-
-    if (active) {
-      hasOpenedRef.current = true;
-      meta.setAttribute('content', THEME_COLOR_MENU_OPEN);
-      return;
-    }
-
-    if (!hasOpenedRef.current) {
-      meta.setAttribute('content', THEME_COLOR_DEFAULT);
-      return;
-    }
-
-    const timer = setTimeout(
-      () => meta.setAttribute('content', THEME_COLOR_DEFAULT),
-      MENU_CLOSE_MS
-    );
-    return () => clearTimeout(timer);
-  }, [active]);
 
   // Listen for hero intro complete event
   useEffect(() => {

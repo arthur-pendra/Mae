@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { usePanel, type PanelType } from '@/context/PanelContext';
+import { useOverlayThemeColor } from '@/hooks/useOverlayThemeColor';
 import SlidePanel from './SlidePanel';
 import MeetPanel from './panels/MeetPanel';
 import StartNuPanel from './panels/StartNuPanel';
@@ -10,6 +11,8 @@ import styles from './GlobalPanel.module.css';
 export default function GlobalPanel() {
   const { activePanel, panelVariant, openPanel, closePanel, onBack, panelStep } = usePanel();
   const navBarRef = useRef<HTMLDivElement>(null);
+
+  useOverlayThemeColor(activePanel !== null);
   const [panelPhase, setPanelPhase] = useState(1);
 
   // Remember the last opened panel so its content stays mounted during the
