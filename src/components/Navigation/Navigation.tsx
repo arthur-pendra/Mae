@@ -1,10 +1,15 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useLenis } from '@/components/SmoothScroll';
 import styles from './Navigation.module.css';
+
+type DotLottieElement = HTMLElement & {
+  dotLottie?: { setMode: (mode: 'forward' | 'reverse') => void; play: () => void };
+};
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -30,13 +35,18 @@ const sectionColors: { id: string; bg: string }[] = [
 export default function Navigation() {
   const [active, setActive] = useState(false);
   const [introReady, setIntroReady] = useState(false);
+  const pathname = usePathname();
   const hamburgerRef = useRef<HTMLButtonElement>(null);
-  const lottieRef = useRef<any>(null);
+  const lottieRef = useRef<DotLottieElement>(null);
   const tagLeftRef = useRef<HTMLButtonElement>(null);
   const tagRightRef = useRef<HTMLButtonElement>(null);
   const menuItemRefs = useRef<(HTMLLIElement | null)[]>([]);
   const hoveredIndexRef = useRef(0);
   const lenis = useLenis();
+
+  // Only the hero delays the navigation. Pages without one (privacy,
+  // stylesheet) never fire the event, so they must not wait for it.
+  const visible = introReady || pathname !== '/';
 
   // Listen for hero intro complete event
   useEffect(() => {
@@ -192,7 +202,11 @@ export default function Navigation() {
     <nav
       className={styles.nav}
       data-navigation-status={active ? 'active' : 'not-active'}
-      style={{ opacity: introReady ? 1 : 0, transition: 'opacity 0.8s ease' }}
+      style={{
+        opacity: visible ? 1 : 0,
+        pointerEvents: visible ? 'auto' : 'none',
+        transition: 'opacity 0.8s ease',
+      }}
     >
       {/* Hamburger */}
       <button

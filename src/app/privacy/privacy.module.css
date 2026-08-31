@@ -1,0 +1,149 @@
+.page {
+  background: var(--color-light);
+  min-height: calc(var(--avh, 1vh) * 100);
+  padding: 8em 2em 4em 2em;
+  color: var(--color-dark);
+}
+
+.inner {
+  max-width: 52em;
+  margin: 0 auto;
+}
+
+/* Header */
+.header {
+  margin-bottom: 4em;
+}
+
+.title {
+  font-size: var(--font-h2);
+  color: var(--color-dark);
+  margin-bottom: 0.4em;
+}
+
+.titleLine {
+  display: block;
+}
+
+.intro {
+  max-width: 40em;
+  color: var(--color-dark);
+}
+
+.updated {
+  font-family: var(--font-mono);
+  font-size: var(--font-tag);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-gray);
+  margin-top: 1.5em;
+}
+
+/* Sections */
+.section {
+  padding-top: 2em;
+  border-top: 1px solid var(--color-gray);
+  margin-bottom: 2.5em;
+}
+
+.heading {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75em;
+  font-family: var(--font-secondary);
+  font-size: var(--font-h4);
+  font-weight: 500;
+  line-height: 1.2;
+  margin-bottom: 0.75em;
+}
+
+.number {
+  font-family: var(--font-mono);
+  font-size: var(--font-tag);
+  letter-spacing: 0.1em;
+  color: var(--color-accent);
+  flex-shrink: 0;
+}
+
+.section p + p {
+  margin-top: 1em;
+}
+
+/* Lists */
+.list {
+  list-style: none;
+  margin: 1em 0 0 0;
+  padding: 0;
+  font-family: var(--font-secondary);
+  font-size: var(--font-par);
+  font-weight: 300;
+  line-height: 1.6;
+}
+
+.list li {
+  position: relative;
+  padding-left: 1.5em;
+}
+
+.list li + li {
+  margin-top: 0.4em;
+}
+
+.list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.6em;
+  width: 0.7em;
+  height: 0.55em;
+  background: var(--color-dark);
+  transform: skewX(-20deg);
+}
+
+.list strong {
+  font-weight: 500;
+}
+
+.note {
+  margin-top: 1em;
+  color: var(--color-dark);
+  opacity: 0.65;
+}
+
+/* Links */
+.link {
+  color: var(--color-dark);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1px;
+  transition: color 0.3s ease;
+}
+
+.link:hover {
+  color: var(--color-accent);
+}
+
+/* Footer */
+.footer {
+  padding-top: 3em;
+  border-top: 1px solid var(--color-gray);
+}
+
+/* Responsive */
+@media screen and (max-width: 767px) {
+  .page {
+    padding: 7em 1.5em 4em 1.5em;
+  }
+
+  .title {
+    font-size: var(--font-h3);
+  }
+
+  .header {
+    margin-bottom: 3em;
+  }
+
+  .heading {
+    font-size: var(--font-h4);
+  }
+}
