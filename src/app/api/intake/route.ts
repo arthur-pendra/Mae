@@ -3,29 +3,68 @@ import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-interface IntakeBody {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  extra: string;
-  variant: 'fysio' | 'leefstijl';
-  doel: string;
-  answers: Record<number, string>;
-}
+/** Shape the client sends. Every field is untrusted and re-validated below. */
+type IntakeBody = Partial<{
+  firstName: unknown;
+  lastName: unknown;
+  email: unknown;
+  phone: unknown;
+  extra: unknown;
+  variant: unknown;
+  doel: unknown;
+  answers: Record<string, unknown>;
+}>;
 
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+/** Everything below is interpolated into an HTML email, so it must be escaped. */
+function esc(value: unknown) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/** Same, but keeps textarea line breaks readable. */
+function escMultiline(value: unknown) {
+  return esc(value).replace(/\r\n|\r|\n/g, '<br />');
+}
+
+const CONTROL_CHARS = /[\u0000-\u001F\u007F]/g;
+
+// Same, minus newline and carriage return: the free-text field may contain those.
+const CONTROL_CHARS_KEEP_NEWLINES = /[\u0000-\u0009\u000B\u000C\u000E-\u001F\u007F]/g;
+
+const MAX_FIELD = 200;
+const MAX_EXTRA = 2000;
+
+function clean(value: unknown, maxLength = MAX_FIELD, keepNewlines = false) {
+  // Strip control characters so nothing can break out of a subject line.
+  return String(value ?? '')
+    .replace(keepNewlines ? CONTROL_CHARS_KEEP_NEWLINES : CONTROL_CHARS, ' ')
+    .trim()
+    .slice(0, maxLength);
+}
+
 export async function POST(request: Request) {
   try {
-    const body: IntakeBody = await request.json();
+    const body = (await request.json()) as IntakeBody;
 
-    const { firstName, lastName, email, phone, extra, variant, doel, answers } = body;
+    const firstName = clean(body.firstName);
+    const lastName = clean(body.lastName);
+    const email = clean(body.email);
+    const phone = clean(body.phone);
+    const extra = clean(body.extra, MAX_EXTRA, true);
+    const doel = clean(body.doel);
+    const variant = body.variant === 'leefstijl' ? 'leefstijl' : 'fysio';
+    const answers = body.answers && typeof body.answers === 'object' ? body.answers : {};
 
     // Validation
-    if (!firstName?.trim() || !lastName?.trim() || !email?.trim() || !phone?.trim()) {
+    if (!firstName || !lastName || !email || !phone) {
       return NextResponse.json(
         { error: 'Vul alle verplichte velden in.' },
         { status: 400 }
@@ -44,8 +83,13 @@ export async function POST(request: Request) {
     const specialist = variant === 'fysio' ? 'Maarten' : 'Merel';
 
     // Format answers for display
-    const answersHtml = Object.entries(answers || {})
-      .map(([, value]) => `<li>${value}</li>`)
+    const answersHtml = Object.values(answers)
+      .map(
+        (value) =>
+          `<li style="padding: 10px 16px; background: rgba(255,255,255,0.05); margin-bottom: 4px; font-size: 14px; color: #ffffff;">${esc(
+            clean(value)
+          )}</li>`
+      )
       .join('');
 
     const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@moveadaptevolve.nl';
@@ -56,6 +100,7 @@ export async function POST(request: Request) {
       from: `MAE Intake <${fromEmail}>`,
       to: [toEmail],
       subject: `Nieuwe intake: ${fullName} — ${variantLabel}`,
+      replyTo: email,
       html: `
         <div style="background-color: #272727; padding: 0; margin: 0; width: 100%;">
           <div style="max-width: 600px; margin: 0 auto; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #ffffff;">
@@ -63,7 +108,7 @@ export async function POST(request: Request) {
             <!-- Header -->
             <div style="padding: 40px 40px 32px; border-bottom: 1px solid rgba(255,255,255,0.1);">
               <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 3px; color: #9DF032; margin-bottom: 16px;">Nieuwe intake</div>
-              <h1 style="font-size: 28px; font-weight: 400; margin: 0; line-height: 1.2;">${fullName}</h1>
+              <h1 style="font-size: 28px; font-weight: 400; margin: 0; line-height: 1.2;">${esc(fullName)}</h1>
               <p style="font-size: 14px; color: rgba(255,255,255,0.5); margin: 8px 0 0;">${variantLabel} &middot; ${specialist}</p>
             </div>
 
@@ -72,19 +117,19 @@ export async function POST(request: Request) {
               <table style="width: 100%; border-collapse: collapse;">
                 <tr>
                   <td style="padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: rgba(255,255,255,0.4); width: 120px;">Naam</td>
-                  <td style="padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 14px; color: #ffffff;">${fullName}</td>
+                  <td style="padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 14px; color: #ffffff;">${esc(fullName)}</td>
                 </tr>
                 <tr>
                   <td style="padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: rgba(255,255,255,0.4);">E-mail</td>
-                  <td style="padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 14px;"><a href="mailto:${email}" style="color: #9DF032; text-decoration: none;">${email}</a></td>
+                  <td style="padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 14px;"><a href="mailto:${encodeURIComponent(email)}" style="color: #9DF032; text-decoration: none;">${esc(email)}</a></td>
                 </tr>
                 <tr>
                   <td style="padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: rgba(255,255,255,0.4);">Telefoon</td>
-                  <td style="padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 14px;"><a href="tel:${phone}" style="color: #9DF032; text-decoration: none;">${phone}</a></td>
+                  <td style="padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 14px;"><a href="tel:${encodeURIComponent(phone)}" style="color: #9DF032; text-decoration: none;">${esc(phone)}</a></td>
                 </tr>
                 <tr>
                   <td style="padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: rgba(255,255,255,0.4);">Doel</td>
-                  <td style="padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 14px; color: #ffffff;">${doel || '—'}</td>
+                  <td style="padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 14px; color: #ffffff;">${esc(doel) || '—'}</td>
                 </tr>
               </table>
             </div>
@@ -93,7 +138,7 @@ export async function POST(request: Request) {
             <!-- Verdieping -->
             <div style="padding: 0 40px 32px;">
               <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: rgba(255,255,255,0.4); margin-bottom: 16px;">Verdiepingsvragen</div>
-              <ul style="margin: 0; padding: 0; list-style: none;">${Object.entries(answers || {}).map(([, value]) => `<li style="padding: 10px 16px; background: rgba(255,255,255,0.05); margin-bottom: 4px; font-size: 14px; color: #ffffff;">${value}</li>`).join('')}</ul>
+              <ul style="margin: 0; padding: 0; list-style: none;">${answersHtml}</ul>
             </div>
             ` : ''}
 
@@ -101,7 +146,7 @@ export async function POST(request: Request) {
             <!-- Extra -->
             <div style="padding: 0 40px 32px;">
               <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: rgba(255,255,255,0.4); margin-bottom: 16px;">Extra informatie</div>
-              <p style="margin: 0; padding: 16px; background: rgba(255,255,255,0.05); font-size: 14px; color: rgba(255,255,255,0.7); line-height: 1.6;">${extra}</p>
+              <p style="margin: 0; padding: 16px; background: rgba(255,255,255,0.05); font-size: 14px; color: rgba(255,255,255,0.7); line-height: 1.6;">${escMultiline(extra)}</p>
             </div>
             ` : ''}
 
@@ -115,7 +160,8 @@ export async function POST(request: Request) {
       `,
     });
 
-    // 2. Confirmation email to client
+    // 2. Confirmation email to client. Best effort — the intake already landed
+    // at MAE, so a bounce here must not turn into a failed submit for the user.
     await resend.emails.send({
       from: `MAE <${fromEmail}>`,
       to: [email],
@@ -131,7 +177,7 @@ export async function POST(request: Request) {
 
             <!-- Hero -->
             <div style="padding: 0 40px 32px; border-bottom: 1px solid rgba(255,255,255,0.1);">
-              <h1 style="font-size: 28px; font-weight: 400; margin: 0 0 12px; line-height: 1.2;">Bedankt ${firstName}!</h1>
+              <h1 style="font-size: 28px; font-weight: 400; margin: 0 0 12px; line-height: 1.2;">Bedankt ${esc(firstName)}!</h1>
               <p style="font-size: 14px; color: rgba(255,255,255,0.5); margin: 0; line-height: 1.6;">
                 We hebben je aanvraag voor ${variantLabel.toLowerCase()} ontvangen.
               </p>
@@ -183,6 +229,8 @@ export async function POST(request: Request) {
           </div>
         </div>
       `,
+    }).catch((error) => {
+      console.error('Intake confirmation email failed:', error);
     });
 
     return NextResponse.json({ success: true });

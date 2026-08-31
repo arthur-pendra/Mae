@@ -5,13 +5,6 @@ export default function FontStyles() {
   return (
     <style dangerouslySetInnerHTML={{ __html: `
       @font-face {
-        font-family: 'Neue Haas Grotesk';
-        src: url('${p}/fonts/NeueHaasGrotesk.ttf') format('truetype');
-        font-weight: 500;
-        font-style: normal;
-        font-display: swap;
-      }
-      @font-face {
         font-family: 'Helvetica Neue';
         src: url('${p}/fonts/HelveticaNeueLight.woff2') format('woff2');
         font-weight: 300;

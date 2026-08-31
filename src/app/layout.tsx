@@ -9,6 +9,7 @@ import TitleRotator from "@/components/TitleRotator";
 import FontStyles from "@/components/FontStyles";
 import Navigation from "@/components/Navigation";
 import InViewObserver from "@/components/InViewObserver";
+import basePath from "@/lib/basePath";
 
 export const metadata: Metadata = {
   title: {
@@ -64,7 +65,11 @@ export default function RootLayout({
       <head>
         <meta name="theme-color" content="#272727" />
         <link rel="preconnect" href="https://HAL13xMAE.b-cdn.net" />
-        <link rel="preload" href="https://HAL13xMAE.b-cdn.net/hero.mp4" as="video" type="video/mp4" crossOrigin="anonymous" />
+        {/* Above-the-fold text: the hero loader and every body copy style. */}
+        <link rel="preload" href={`${basePath}/fonts/HelveticaNeueLight.woff2`} as="font" type="font/woff2" crossOrigin="anonymous" />
+        <link rel="preload" href={`${basePath}/fonts/CHANEY-Regular.otf`} as="font" type="font/otf" crossOrigin="anonymous" />
+        {/* Warms the cache for the hero video without competing with the fonts. */}
+        <link rel="preload" href="https://HAL13xMAE.b-cdn.net/hero.mp4" as="video" type="video/mp4" crossOrigin="anonymous" fetchPriority="low" />
         <FontStyles />
         <Script src="https://unpkg.com/@lottiefiles/dotlottie-wc@0.9.3/dist/dotlottie-wc.js" type="module" crossOrigin="anonymous" strategy="lazyOnload" />
         <script
