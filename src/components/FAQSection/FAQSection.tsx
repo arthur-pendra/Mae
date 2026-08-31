@@ -1,11 +1,8 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { useRef } from 'react';
+import { useStackedRows } from '@/hooks/useStackedRows';
 import styles from './FAQSection.module.css';
-
-gsap.registerPlugin(ScrollTrigger);
 
 const faqs = [
   {
@@ -31,85 +28,11 @@ const faqs = [
 ];
 
 export default function FAQSection() {
-  const sectionRef = useRef<HTMLElement>(null);
   const rowsWrapperRef = useRef<HTMLDivElement>(null);
-  const overlayRef = useRef<HTMLDivElement>(null);
-  const rowsRef = useRef<HTMLDivElement[]>([]);
-  const shadowsRef = useRef<HTMLDivElement[]>([]);
-
-  useEffect(() => {
-    const section = sectionRef.current;
-    const rowsWrapper = rowsWrapperRef.current;
-    const overlay = overlayRef.current;
-    const rows = rowsRef.current;
-
-    if (!section || !rowsWrapper || !overlay || rows.length === 0) return;
-
-    const isMobile = window.innerWidth < 768;
-
-    // On mobile: no animation, just show everything statically
-    if (isMobile) {
-      overlay.style.display = 'none';
-      shadowsRef.current.forEach(s => { if (s) s.style.display = 'none'; });
-      return;
-    }
-
-    const allElements = [overlay, ...rows];
-    const heights = allElements.map(el => el.offsetHeight);
-    const extraOffset = 50;
-
-    allElements.forEach((el, index) => {
-      if (index > 0) {
-        const offset = heights.slice(0, index).reduce((sum, h) => sum + h, 0) + extraOffset;
-        gsap.set(el, {
-          y: -offset,
-          rotation: -3 - (index - 1) * 1.5,
-          transformOrigin: 'right top',
-        });
-      }
-    });
-
-    const tl = gsap.timeline({
-      scrollTrigger: {
-        trigger: rowsWrapper,
-        start: 'top bottom',
-        end: 'center center',
-        scrub: 1,
-      },
-    });
-
-    const shadows = shadowsRef.current;
-
-    allElements.forEach((el, index) => {
-      if (index > 0) {
-        const delay = (index - 1) * 0.1;
-        const duration = 1 + (index - 1) * 0.6;
-
-        tl.to(el, {
-          y: 0,
-          rotation: 0,
-          ease: 'power1.inOut',
-          duration: duration,
-        }, delay);
-
-        if (shadows[index - 1]) {
-          tl.to(shadows[index - 1], {
-            opacity: 0,
-            ease: 'power1.inOut',
-            duration: duration,
-          }, delay);
-        }
-      }
-    });
-
-    return () => {
-      tl.scrollTrigger?.kill();
-      tl.kill();
-    };
-  }, []);
+  const { overlayRef, rowsRef, shadowsRef } = useStackedRows(rowsWrapperRef);
 
   return (
-    <section ref={sectionRef} id="faq-section" className={styles.section}>
+    <section id="faq-section" className={styles.section}>
       <div className={styles.header}>
         <span className="label label-dark">[ Veelgestelde vragen ]</span>
       </div>

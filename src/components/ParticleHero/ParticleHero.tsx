@@ -1,38 +1,34 @@
 'use client';
 
 import { Suspense, useState, useEffect, useRef, useCallback } from 'react';
-import { Canvas, useThree, useFrame } from '@react-three/fiber';
+import { Canvas } from '@react-three/fiber';
 import { Center } from '@react-three/drei';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Logo3D from './LogoParticles';
 import VideoPlane from './VideoPlane';
-import { useSharedVideo } from '@/context/SharedVideoContext';
+import { useSharedVideo, useSharedVideoPlayback } from '@/context/SharedVideoContext';
 import { usePanel } from '@/context/PanelContext';
+import {
+  Invalidator,
+  canvasDpr,
+  getScaleAndZoom,
+  glOptions,
+  usePointerTilt,
+  useScreenSize,
+} from './useParticleScene';
 import styles from './ParticleHero.module.css';
 
 gsap.registerPlugin(ScrollTrigger);
 
-const isStrongHardware = typeof navigator !== 'undefined' && navigator.hardwareConcurrency > 4;
-
-function Invalidator({ active }: { active: boolean }) {
-  const { invalidate } = useThree();
-  useEffect(() => { if (active) invalidate(); }, [active, invalidate]);
-  useFrame(() => { if (active) invalidate(); });
-  return null;
-}
-
-type ScreenSize = 'mobile' | 'tablet-sm' | 'tablet-md' | 'tablet' | 'desktop-sm' | 'desktop' | 'desktop-lg' | null;
-
 export default function ParticleHero() {
-  const [screenSize, setScreenSize] = useState<ScreenSize>(null);
+  const screenSize = useScreenSize();
   const scrollProgressRef = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const sideLabelsRef = useRef<HTMLDivElement>(null);
   const mobileCtaRef = useRef<HTMLDivElement>(null);
   const { video: sharedVideo, texture: sharedTexture } = useSharedVideo();
-  const { openPanel } = usePanel();
-  const mouseRef = useRef({ x: 0, y: 0 });
+  const { openPanel, activePanel } = usePanel();
   const introOffsetRef = useRef(2.0); // Logo starts tilted+dropped below screen
   const bgBrightnessRef = useRef({ value: 0 }); // Animated by GSAP
   const loaderRef = useRef<HTMLDivElement>(null);
@@ -41,56 +37,15 @@ export default function ParticleHero() {
   const [heroVisible, setHeroVisible] = useState(true);
   const heroVisibleRef = useRef(true);
 
+  // An open panel covers the whole viewport, so nothing behind it needs drawing.
+  const active = heroVisible && activePanel === null;
+
+  const mouseRef = usePointerTilt(screenSize, active);
+  useSharedVideoPlayback(active);
+
   const handleLogoReady = useCallback(() => {
     setLogoReady(true);
   }, []);
-
-  useEffect(() => {
-    const checkScreenSize = () => {
-      const width = window.innerWidth;
-      if (width < 768) {
-        setScreenSize('mobile');
-      } else if (width < 900) {
-        setScreenSize('tablet-sm');
-      } else if (width < 1000) {
-        setScreenSize('tablet-md');
-      } else if (width < 1200) {
-        setScreenSize('tablet');
-      } else if (width < 1500) {
-        setScreenSize('desktop-sm');
-      } else if (width < 1900) {
-        setScreenSize('desktop');
-      } else {
-        setScreenSize('desktop-lg');
-      }
-    };
-    checkScreenSize();
-    window.addEventListener('resize', checkScreenSize);
-    return () => window.removeEventListener('resize', checkScreenSize);
-  }, []);
-
-  // Mouse tracking for 3D logo tilt (desktop) / random drift (mobile)
-  useEffect(() => {
-    if (screenSize === 'mobile') {
-      if (!heroVisible) return;
-      let raf: number;
-      const animate = (time: number) => {
-        const t = time * 0.001;
-        mouseRef.current.x = Math.sin(t * 0.4) * 0.8 + Math.sin(t * 1.1) * 0.5 + Math.cos(t * 0.7) * 0.3;
-        mouseRef.current.y = Math.cos(t * 0.3) * 0.7 + Math.sin(t * 0.9) * 0.4 + Math.cos(t * 1.4) * 0.3;
-        raf = requestAnimationFrame(animate);
-      };
-      raf = requestAnimationFrame(animate);
-      return () => cancelAnimationFrame(raf);
-    }
-    const handleMouseMove = (e: MouseEvent) => {
-      mouseRef.current.x = (e.clientX / window.innerWidth) * 2 - 1;
-      mouseRef.current.y = (e.clientY / window.innerHeight) * 2 - 1;
-    };
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, [screenSize, heroVisible]);
-
 
   // Intro animation: starts only after the 3D logo has rendered its first frame
   useEffect(() => {
@@ -102,17 +57,17 @@ export default function ParticleHero() {
     const fadeDuration = 0.8;
 
     // Fade out loader as logo starts
-    if (loaderRef.current) {
-      gsap.to(loaderRef.current, {
-        opacity: 0,
-        duration: 0.6,
-        delay: startDelay - 0.3,
-        ease: 'power2.inOut',
-      });
-    }
+    const loaderTween = loaderRef.current
+      ? gsap.to(loaderRef.current, {
+          opacity: 0,
+          duration: 0.6,
+          delay: startDelay - 0.3,
+          ease: 'power2.inOut',
+        })
+      : null;
 
     // After 1 second: logo animates up
-    gsap.to(introOffsetRef, {
+    const introTween = gsap.to(introOffsetRef, {
       current: 0,
       duration: logoDuration,
       delay: startDelay,
@@ -121,7 +76,7 @@ export default function ParticleHero() {
 
     // Background fades in gradually after logo has mostly landed
     const brightenDelay = startDelay + logoDuration * 0.5;
-    gsap.to(bgBrightnessRef.current, {
+    const brightenTween = gsap.to(bgBrightnessRef.current, {
       value: 0.18,
       duration: brightenDuration,
       delay: brightenDelay,
@@ -130,8 +85,7 @@ export default function ParticleHero() {
 
     // Fade in side labels + mobile CTA after background starts brightening
     const uiFadeDelay = brightenDelay + brightenDuration * 0.4;
-
-    gsap.to([sideLabelsRef.current, mobileCtaRef.current].filter(Boolean), {
+    const uiTween = gsap.to([sideLabelsRef.current, mobileCtaRef.current].filter(Boolean), {
       opacity: 1,
       duration: fadeDuration,
       delay: uiFadeDelay,
@@ -144,7 +98,13 @@ export default function ParticleHero() {
       setIntroComplete(true);
     }, (uiFadeDelay + fadeDuration * 0.3) * 1000);
 
-    return () => clearTimeout(navTimer);
+    return () => {
+      clearTimeout(navTimer);
+      loaderTween?.kill();
+      introTween.kill();
+      brightenTween.kill();
+      uiTween.kill();
+    };
   }, [logoReady]);
 
   // Scroll-based: tilt + drop when scrolling away from hero
@@ -168,7 +128,7 @@ export default function ParticleHero() {
           heroVisibleRef.current = nowVisible;
           setHeroVisible(nowVisible);
         }
-      }
+      },
     });
 
     return () => {
@@ -177,37 +137,8 @@ export default function ParticleHero() {
   }, []);
 
   const isMobile = screenSize === 'mobile';
-
-  const getScaleAndZoom = () => {
-    switch (screenSize) {
-      case 'mobile':
-        return { scale: 0.07, zoom: 180 };
-      case 'tablet-sm':
-        return { scale: 0.085, zoom: 200 };
-      case 'tablet-md':
-        return { scale: 0.095, zoom: 210 };
-      case 'tablet':
-        return { scale: 0.11, zoom: 220 };
-      case 'desktop-sm':
-        return { scale: 0.11, zoom: 250 };
-      case 'desktop':
-        return { scale: 0.12, zoom: 280 };
-      case 'desktop-lg':
-      default:
-        return { scale: 0.15, zoom: 280 };
-    }
-  };
-
-  const { scale, zoom } = getScaleAndZoom();
-
-  const getLogoYOffset = () => {
-    switch (screenSize) {
-      case 'mobile':
-        return 0.05;
-      default:
-        return 0;
-    }
-  };
+  const { scale, zoom } = getScaleAndZoom(screenSize);
+  const logoYOffset = isMobile ? 0.05 : 0;
 
   return (
     <div ref={containerRef} className={styles.container}>
@@ -246,15 +177,24 @@ export default function ParticleHero() {
           orthographic
           camera={{ position: [0, 0, 100], zoom, near: 0.1, far: 200 }}
           frameloop="demand"
-          gl={{ antialias: true, alpha: true }}
-          dpr={isStrongHardware ? [1, 2] : [1, 1.5]}
+          gl={glOptions}
+          dpr={canvasDpr}
         >
-          <Invalidator active={heroVisible} />
+          <Invalidator active={active} />
           <VideoPlane texture={sharedTexture} video={sharedVideo} brightnessRef={bgBrightnessRef} />
           <Suspense fallback={null}>
-            <group position={[0, getLogoYOffset(), 0]}>
+            <group position={[0, logoYOffset, 0]}>
               <Center precise>
-                <Logo3D scale={scale} scrollProgressRef={scrollProgressRef} mouseRef={mouseRef} mode="hero" isMobile={isMobile} sharedTexture={sharedTexture} introOffsetRef={introOffsetRef} onReady={handleLogoReady} />
+                <Logo3D
+                  scale={scale}
+                  scrollProgressRef={scrollProgressRef}
+                  mouseRef={mouseRef}
+                  mode="hero"
+                  isMobile={isMobile}
+                  sharedTexture={sharedTexture}
+                  introOffsetRef={introOffsetRef}
+                  onReady={handleLogoReady}
+                />
               </Center>
             </group>
           </Suspense>

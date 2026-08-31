@@ -30,7 +30,6 @@ export default function SlidePanel({ isOpen, onClose, children, header, dark }: 
   const accentRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const closeSvgRef = useRef<SVGSVGElement>(null);
   const closeLine1Ref = useRef<SVGLineElement>(null);
   const closeLine2Ref = useRef<SVGLineElement>(null);
 
@@ -64,11 +63,14 @@ export default function SlidePanel({ isOpen, onClose, children, header, dark }: 
   const lerpRafRef = useRef<number | null>(null);
   const switchedRef = useRef(false);
 
-  // Keep refs in sync for use in callbacks
-  isOpenRef.current = isOpen;
-  lenisRef.current = lenis;
-  activePanelRef.current = activePanel;
-  openPanelRef.current = openPanel;
+  // Keep refs in sync for the imperative wheel / rAF handlers below, which run
+  // outside React and always need the latest value.
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+    lenisRef.current = lenis;
+    activePanelRef.current = activePanel;
+    openPanelRef.current = openPanel;
+  });
 
   // Check if content is scrolled to the bottom
   const isAtBottom = () => {
@@ -213,64 +215,6 @@ export default function SlidePanel({ isOpen, onClose, children, header, dark }: 
         startDecay();
       }
     }, 150);
-  };
-
-  // Touch overscroll tracking
-  const touchStartYRef = useRef<number | null>(null);
-  const touchActiveRef = useRef(false);
-
-  const handleTouchStart = (e: TouchEvent) => {
-    touchStartYRef.current = e.touches[0].clientY;
-    touchActiveRef.current = false;
-  };
-
-  const handleTouchMove = (e: TouchEvent) => {
-    if ((activePanelRef.current !== 'meet-maarten' && activePanelRef.current !== 'meet-merel') || switchedRef.current || touchStartYRef.current === null) return;
-
-    const currentY = e.touches[0].clientY;
-    const deltaY = touchStartYRef.current - currentY; // positive = scrolling down
-
-    if (isAtBottom() && deltaY > 0 && !touchActiveRef.current) {
-      // Just entered overscroll zone
-      touchActiveRef.current = true;
-      touchStartYRef.current = currentY;
-      return;
-    }
-
-    if (touchActiveRef.current) {
-      const touchDelta = touchStartYRef.current - currentY;
-      e.preventDefault();
-      stopDecay();
-
-      if (touchDelta > 0) {
-        // Swiping up (scrolling down) — accumulate with resistance
-        const ratio = overscrollRef.current / OVERSCROLL_THRESHOLD;
-        const resistance = Math.max(1 - ratio * ratio * 0.85, 0.08);
-        overscrollRef.current = Math.min(touchDelta * resistance * 0.6, OVERSCROLL_THRESHOLD);
-      } else {
-        // Swiping down (scrolling up) — reduce
-        overscrollRef.current = Math.max(overscrollRef.current + touchDelta * 0.4, 0);
-        if (overscrollRef.current <= 0) {
-          touchActiveRef.current = false;
-        }
-      }
-      startLerpLoop();
-    } else if (overscrollRef.current > 0 && deltaY < 0) {
-      // Scrolling up while in overscroll
-      e.preventDefault();
-      overscrollRef.current += deltaY * 0.4;
-      overscrollRef.current = Math.max(overscrollRef.current, 0);
-      startLerpLoop();
-      touchStartYRef.current = currentY;
-    }
-  };
-
-  const handleTouchEnd = () => {
-    touchStartYRef.current = null;
-    touchActiveRef.current = false;
-    if (overscrollRef.current > 0 && overscrollRef.current < OVERSCROLL_THRESHOLD && !switchedRef.current) {
-      startDecay();
-    }
   };
 
   useEffect(() => {
@@ -474,7 +418,7 @@ export default function SlidePanel({ isOpen, onClose, children, header, dark }: 
               <div className={styles.panelHeaderInner}>
                 {header}
                 <button className={styles.closeButton} onClick={onClose} onMouseEnter={handleCloseHover} onMouseLeave={handleCloseLeave}>
-                  <svg ref={closeSvgRef} width="60%" height="60%" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <svg width="60%" height="60%" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <line ref={closeLine1Ref} x1="18" y1="6" x2="6" y2="18" />
                     <line ref={closeLine2Ref} x1="6" y1="6" x2="18" y2="18" />
                   </svg>

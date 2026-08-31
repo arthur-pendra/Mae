@@ -157,15 +157,11 @@ export default function StartNuPanel() {
 
   /* ── Handlers ── */
 
-  const handleFysioDoel = (choice: FysioDoel) => {
-    setFysioDoel(choice);
-    setAnswers({});
-    setCurrentQuestion(0);
-    setCurrentStep('verdieping');
-  };
+  const doelen = isFysio ? FYSIO_DOELEN : LEEFSTIJL_DOELEN;
 
-  const handleLeefstijlDoel = (choice: LeefstijlDoel) => {
-    setLeefstijlDoel(choice);
+  const handleDoel = (choice: FysioDoel | LeefstijlDoel) => {
+    if (isFysio) setFysioDoel(choice as FysioDoel);
+    else setLeefstijlDoel(choice as LeefstijlDoel);
     setAnswers({});
     setCurrentQuestion(0);
     setCurrentStep('verdieping');
@@ -340,23 +336,19 @@ export default function StartNuPanel() {
           </p>
 
           <div className={styles.choiceGrid}>
-            {isFysio
-              ? FYSIO_DOELEN.map((d) => (
-                  <div key={d.key} className={styles.choiceCard} onClick={() => handleFysioDoel(d.key)}>
-                    <div className={styles.choiceContent}>
-                      <h3 className={styles.choiceTitle}>{d.title}</h3>
-                      <p className={`${styles.choiceText} par`}>{d.text}</p>
-                    </div>
-                  </div>
-                ))
-              : LEEFSTIJL_DOELEN.map((d) => (
-                  <div key={d.key} className={styles.choiceCard} onClick={() => handleLeefstijlDoel(d.key)}>
-                    <div className={styles.choiceContent}>
-                      <h3 className={styles.choiceTitle}>{d.title}</h3>
-                      <p className={`${styles.choiceText} par`}>{d.text}</p>
-                    </div>
-                  </div>
-                ))}
+            {doelen.map((d) => (
+              <button
+                type="button"
+                key={d.key}
+                className={styles.choiceCard}
+                onClick={() => handleDoel(d.key)}
+              >
+                <div className={styles.choiceContent}>
+                  <h3 className={styles.choiceTitle}>{d.title}</h3>
+                  <p className={`${styles.choiceText} par`}>{d.text}</p>
+                </div>
+              </button>
+            ))}
           </div>
         </div>
       )}

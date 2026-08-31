@@ -1,49 +1,18 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { useRef } from 'react';
+import { useStickyBanner } from '@/hooks/useStickyBanner';
+import { useInViewVideo } from '@/hooks/useInViewVideo';
 import styles from './Hall13Section.module.css';
 import cdn from '@/lib/cdn';
-
-gsap.registerPlugin(ScrollTrigger);
 
 export default function Hall13Section() {
   const sectionRef = useRef<HTMLElement>(null);
   const bannerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const section = sectionRef.current;
-    const banner = bannerRef.current;
+  const videoRef = useInViewVideo();
 
-    if (!section || !banner) return;
-
-    // Read CSS-defined top value as reference (0.5em in correct font-size context)
-    const initialTop = parseFloat(getComputedStyle(banner).top) || 0;
-
-    const trigger = ScrollTrigger.create({
-      trigger: section,
-      start: 'top bottom',
-      end: 'bottom bottom',
-      onUpdate: () => {
-        const sectionRect = section.getBoundingClientRect();
-        const bannerHeight = banner.offsetHeight;
-        const viewportHeight = window.innerHeight;
-
-        // Keep banner absolute, calculate top to simulate sticky-to-viewport-bottom
-        const desiredTop = viewportHeight - bannerHeight - sectionRect.top;
-        const minTop = initialTop;
-        const maxTop = sectionRect.height - bannerHeight - initialTop;
-
-        banner.style.top = Math.max(minTop, Math.min(desiredTop, maxTop)) + 'px';
-        banner.style.bottom = 'auto';
-      }
-    });
-
-    return () => {
-      trigger.kill();
-    };
-  }, []);
+  useStickyBanner(sectionRef, bannerRef);
 
   return (
     <section ref={sectionRef} className={styles.section}>
@@ -56,9 +25,9 @@ export default function Hall13Section() {
         </a>
       </div>
       <video
+        ref={videoRef}
         src={`${cdn}/degym.mp4`}
         preload="none"
-        autoPlay
         loop
         muted
         playsInline

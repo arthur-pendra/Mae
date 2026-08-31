@@ -1,17 +1,11 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { useAutoplayRetry } from '@/hooks/useAutoplayRetry';
+import { useInViewVideo } from '@/hooks/useInViewVideo';
 import styles from './ShowreelSection.module.css';
 import cdn from '@/lib/cdn';
 
 export default function ShowreelSection() {
-  const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null);
-  const videoRef = useCallback((node: HTMLVideoElement | null) => {
-    setVideoEl(node);
-  }, []);
-
-  useAutoplayRetry(videoEl);
+  const videoRef = useInViewVideo();
 
   return (
     <section className={styles.section}>
@@ -22,7 +16,6 @@ export default function ShowreelSection() {
             className={styles.video}
             src={`${cdn}/hero.mp4`}
             preload="none"
-            autoPlay
             muted
             loop
             playsInline

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import ParticleHero from '@/components/ParticleHero';
+import LazyParticleHero from '@/components/ParticleHero/LazyParticleHero';
 import styles from './not-found.module.css';
 
 export default function NotFound() {
@@ -9,7 +9,7 @@ export default function NotFound() {
     <div className={styles.page}>
       <div className={styles.hero}>
         <div className={styles.logoContainer}>
-          <ParticleHero />
+          <LazyParticleHero />
         </div>
       </div>
       <div className={styles.content}>

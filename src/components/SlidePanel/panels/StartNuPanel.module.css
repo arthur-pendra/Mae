@@ -86,7 +86,11 @@
 .choiceCard {
   display: flex;
   align-items: flex-start;
+  width: 100%;
   padding: 1.2em 1.5em;
+  background: none;
+  color: inherit;
+  font: inherit;
   border: 0.25px solid rgba(255, 255, 255, 0.2);
   cursor: pointer;
   text-align: left;

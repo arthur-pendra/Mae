@@ -1,37 +1,32 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { usePanel } from '@/context/PanelContext';
+import { usePanel, type PanelType } from '@/context/PanelContext';
 import SlidePanel from './SlidePanel';
-import MeetMaartenPanel from './panels/MeetMaartenPanel';
-import MeetMerelPanel from './panels/MeetMerelPanel';
+import MeetPanel from './panels/MeetPanel';
 import StartNuPanel from './panels/StartNuPanel';
 import styles from './GlobalPanel.module.css';
 
 export default function GlobalPanel() {
   const { activePanel, panelVariant, openPanel, closePanel, onBack, panelStep } = usePanel();
-  const lastPanelRef = useRef<string | null>(null);
   const navBarRef = useRef<HTMLDivElement>(null);
   const [panelPhase, setPanelPhase] = useState(1);
 
-  // Only update lastPanel when a new panel opens
-  useEffect(() => {
-    if (activePanel !== null) {
-      lastPanelRef.current = activePanel;
-    }
-  }, [activePanel]);
-
-  // Reset phase when panel changes
-  useEffect(() => {
+  // Remember the last opened panel so its content stays mounted during the
+  // exit animation. Adjusting state during render is cheaper than an effect:
+  // React re-runs this component before committing, without an extra paint.
+  const [lastPanel, setLastPanel] = useState<PanelType>(null);
+  const [trackedPanel, setTrackedPanel] = useState<PanelType>(null);
+  if (activePanel !== trackedPanel) {
+    setTrackedPanel(activePanel);
     setPanelPhase(1);
-  }, [activePanel]);
+    if (activePanel !== null) setLastPanel(activePanel);
+  }
 
   // Observe data-panel-phase attribute changes from SlidePanel
-  const panelElRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
     // Find the panel element (parent of navBar)
     const panelEl = navBarRef.current?.closest('[data-panel-phase]') as HTMLElement | null;
-    panelElRef.current = panelEl;
     if (!panelEl) return;
 
     const observer = new MutationObserver(() => {
@@ -43,14 +38,14 @@ export default function GlobalPanel() {
   }, [activePanel]);
 
   // Use activePanel if open, otherwise use last panel for exit animation
-  const panelToRender = activePanel ?? lastPanelRef.current;
+  const panelToRender = activePanel ?? lastPanel;
 
   const renderPanelContent = () => {
     switch (panelToRender) {
       case 'meet-maarten':
-        return <MeetMaartenPanel />;
+        return <MeetPanel key="maarten" person="maarten" />;
       case 'meet-merel':
-        return <MeetMerelPanel />;
+        return <MeetPanel key="merel" person="merel" />;
       case 'start-nu':
         return <StartNuPanel />;
       default:
@@ -61,7 +56,7 @@ export default function GlobalPanel() {
   const isMeetPanel = panelToRender === 'meet-maarten' || panelToRender === 'meet-merel';
   const isStartNu = panelToRender === 'start-nu';
   const showStartTraject = isMeetPanel && panelPhase === 2;
-  const isMerel = panelToRender === 'meet-merel' || (isStartNu && (panelVariant === 'leefstijl' || lastPanelRef.current === 'meet-merel'));
+  const isMerel = panelToRender === 'meet-merel' || (isStartNu && (panelVariant === 'leefstijl' || lastPanel === 'meet-merel'));
   const meetName = isMerel ? 'Meet Merel' : 'Meet Maarten';
   const meetPanel = isMerel ? 'meet-merel' : 'meet-maarten';
   const startVariant = isMerel ? 'leefstijl' : 'fysio';
