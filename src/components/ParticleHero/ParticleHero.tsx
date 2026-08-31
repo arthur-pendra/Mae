@@ -28,7 +28,7 @@ export default function ParticleHero() {
   const sideLabelsRef = useRef<HTMLDivElement>(null);
   const mobileCtaRef = useRef<HTMLDivElement>(null);
   const { video: sharedVideo, texture: sharedTexture } = useSharedVideo();
-  const { openPanel, activePanel } = usePanel();
+  const { openPanel } = usePanel();
   const introOffsetRef = useRef(2.0); // Logo starts tilted+dropped below screen
   const bgBrightnessRef = useRef({ value: 0 }); // Animated by GSAP
   const loaderRef = useRef<HTMLDivElement>(null);
@@ -37,11 +37,10 @@ export default function ParticleHero() {
   const [heroVisible, setHeroVisible] = useState(true);
   const heroVisibleRef = useRef(true);
 
-  // An open panel covers the whole viewport, so nothing behind it needs drawing.
-  const active = heroVisible && activePanel === null;
-
-  const mouseRef = usePointerTilt(screenSize, active);
-  useSharedVideoPlayback(active);
+  // The panel is only 65% wide on desktop and an 85% tall sheet on mobile, so
+  // the hero stays partly visible behind it and has to keep running.
+  const mouseRef = usePointerTilt(screenSize, heroVisible);
+  useSharedVideoPlayback(heroVisible);
 
   const handleLogoReady = useCallback(() => {
     setLogoReady(true);
@@ -180,7 +179,7 @@ export default function ParticleHero() {
           gl={glOptions}
           dpr={canvasDpr}
         >
-          <Invalidator active={active} />
+          <Invalidator active={heroVisible} />
           <VideoPlane texture={sharedTexture} video={sharedVideo} brightnessRef={bgBrightnessRef} />
           <Suspense fallback={null}>
             <group position={[0, logoYOffset, 0]}>

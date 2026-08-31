@@ -36,14 +36,13 @@ export default function ParticleFooter() {
   const containerRef = useRef<HTMLDivElement>(null);
   const footerTagsRef = useRef<HTMLDivElement>(null);
   const { video: sharedVideo, texture: sharedTexture } = useSharedVideo();
-  const { openPanel, activePanel } = usePanel();
+  const { openPanel } = usePanel();
   const [visible, setVisible] = useState(false);
 
-  // An open panel covers the whole viewport, so nothing behind it needs drawing.
-  const active = visible && activePanel === null;
-
-  const mouseRef = usePointerTilt(screenSize, active);
-  useSharedVideoPlayback(active);
+  // The panel never covers the full viewport, so the scene behind it has to
+  // keep running.
+  const mouseRef = usePointerTilt(screenSize, visible);
+  useSharedVideoPlayback(visible);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -86,16 +85,10 @@ export default function ParticleFooter() {
     <div ref={containerRef} className={styles.container}>
       {/* Footer Tags - fade in when logo reaches center */}
       <div ref={footerTagsRef} className={styles.footerTags} style={{ opacity: 0 }}>
-        <button
-          className={styles.footerTag}
-          onClick={() => document.getElementById('herstel-section')?.scrollIntoView({ behavior: 'smooth' })}
-        >
+        <button className={styles.footerTag} onClick={() => openPanel('start-nu', 'fysio')}>
           [START FYSIOTHERAPIE]
         </button>
-        <button
-          className={styles.footerTag}
-          onClick={() => document.getElementById('leefstijl-section')?.scrollIntoView({ behavior: 'smooth' })}
-        >
+        <button className={styles.footerTag} onClick={() => openPanel('start-nu', 'leefstijl')}>
           [START LEEFSTIJL COACHING]
         </button>
       </div>
@@ -164,7 +157,7 @@ export default function ParticleFooter() {
           gl={glOptions}
           dpr={canvasDpr}
         >
-          <Invalidator active={active} />
+          <Invalidator active={visible} />
           <VideoPlane texture={sharedTexture} video={sharedVideo} brightness={0.18} />
           <Suspense fallback={null}>
             <group position={[0, logoYOffset, 0]}>
